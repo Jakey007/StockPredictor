@@ -1,0 +1,226 @@
+---
+title: "Investment Method Visualization"
+author: "Jake Rottier"
+output: html_document
+---
+
+This analysis provides insights into the accuracy of machine learning algorithms in predicting stock market data. The underlying algorithm has been evaluated using a variety of investment methods, detailed in the README.md file. The goal of this analysis is to create visual displays that enhance understanding of these investment strategies and asses the accuracy of the machine learning model compared to multiple baseline stocks.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(RColorBrewer)
+```
+
+```{r, echo=FALSE, message=F}
+# Reading in the CSV Stock file for analysis
+df = read_csv('AverageResults.csv')
+
+# Creating the Stock List for the Stock Column in the DataFrame
+stock_list = c('AAPL', 'AMD', 'AMZN', 'CSCO', 'META', 'MSFT', 'NFLX', 'QCOM', 'SBUX', 'TSLA', 'SPX')
+stock_list = rep(stock_list, each = 41)
+
+# Assigning the Stock Column in the DataFrame
+df = df %>% mutate(Stock = stock_list)
+
+# Renaming Columns for Readability
+df = df %>% rename(Buy_And_Hold_Investment = Basic_Investment)
+
+# Creating a Success Column to check if chosen Investment Method was greater than Basic Strategy
+sdf = df %>% mutate(Success = Calculated_Investment > Buy_And_Hold_Investment)
+
+# Transitioning the DataFrame into a long format
+df = df %>% pivot_longer(cols = c(Calculated_Investment, Buy_And_Hold_Investment),
+               names_to = "Investment_Type",
+               values_to = "Amount")
+
+# Creating Confidence Level Groups for Easier Graphing and Analysis
+df = df %>%
+  mutate(Confidence_Level = cut(Confidence, breaks = c(0.25, 0.40, 0.55, 0.7), labels = c("Low", "Medium", "High")))
+```
+
+The analysis begins with Investment Method 1, which involves earning 2.5% yearly interest compounded daily instead of investing in the stock market. This approach is common among investors who perceive the market as too risky and prefer a safer investment strategy.
+
+```{r, echo=FALSE}
+# This graph shows the chosen investment method as compared to the Buy and Hold method
+plt = ggplot(df %>% filter(Investment_Method == 1)) + geom_col(aes(x = Stock, y=Amount, fill=Investment_Type), position = position_dodge())
+
+# Adjusting labels and coloring
+plt + scale_fill_manual(values = c("Calculated_Investment" = "blue", "Buy_And_Hold_Investment" = "red"), name = "Investment Type", labels = c("Buy and Hold", "Investment Method 1")) + ggtitle('Investment Method 1', subtitle = '2.5% Yearly Interest Compounded Daily') + ylab('Investment Amount')
+```
+
+Although keeping money in a bank or Certificate of Deposit (CD) may offer a less volatile option compared to stock market investments, the accompanying graph demonstrates that this approach generally yields lower returns. Despite periods of market volatility, nearly every stock analyzed outperformed the 2.5% annual interest offered by banks and CDs.
+
+Next, the analysis examines Investment Method 2, which involves buying and holding a stock long-term. This strategy is commonly employed by investors who do not anticipate needing access to their funds in the near future.
+
+```{r, echo=FALSE}
+# This graph shows the chosen investment method as compared to the Buy and Hold method
+plt = ggplot(df %>% filter(Investment_Method == 2)) + geom_col(aes(x = Stock, y=Amount, fill=Investment_Type), position = position_dodge())
+
+# Adjusting labels and coloring
+plt + scale_fill_manual(values = c("Calculated_Investment" = "blue", "Buy_And_Hold_Investment" = "red"), name = "Investment Type", labels = c("Buy and Hold", "Investment Method 2")) + ggtitle('Investment Method 2', subtitle = 'Buy and Hold') + ylab('Investment Amount')
+```
+
+Buying and holding stocks long-term is a popular strategy among investors, which is why it serves as the control method for this analysis's testing. The accompanying graph illustrates that our model accurately calculates the daily multipliers, resulting in consistent overall investment values across all stocks when utilizing the buy-and-hold method. This approach typically leads to capital gains over extended periods, as demonstrated in the graph.
+
+Following Investment Method 2, the analysis shifts to Investment Method 3, which involves long-term short-selling of the stock. This strategy is used by investors who anticipate a decline in the stock's value.
+
+```{r, echo=F}
+# This graph shows the chosen investment method as compared to the Buy and Hold method
+plt = ggplot(df %>% filter(Investment_Method == 3)) + geom_col(aes(x = Stock, y=Amount, fill=Investment_Type), position = position_dodge())
+
+# Adjusting labels and coloring
+plt + scale_fill_manual(values = c("Calculated_Investment" = "blue", "Buy_And_Hold_Investment" = "red"), name = "Investment Type", labels = c("Buy and Hold", "Investment Method 3")) + ggtitle('Investment Method 3', subtitle = 'Short Long Term') + ylab('Investment Amount')
+```
+
+In contrast to long-term stock holding, long-term short-selling is less common. This method is typically used over short periods when a stock appears to have a declining financial outlook. The accompanying graph demonstrates that almost every stock experienced long-term losses, with some losing over a quarter of their value. This graph also illustrates that our model accurately calculates the short-selling multipliers, as seen from the decline in investment value.
+
+The analysis then examines Investment Method 4, where the machine learning algorithm purchases the stock when it surpasses a specified confidence threshold. This method leverages the model's predictive capabilities to make informed investment decisions based on the probability of profitable outcomes.
+
+```{r, echo=FALSE}
+# This graph shows the chosen investment method as compared to the Buy and Hold method
+
+# Creating a custom color palette for the 11 different stocks
+custom_palette = brewer.pal(11, "Paired")
+
+# Creating a bar graph that shows success by Stock
+ggplot(sdf %>% filter(Investment_Method == 4)) + geom_bar(aes(x=Success, fill=Stock)) + ylab('Count') + ggtitle('Investment Method 4 Success Rate', subtitle = 'Buy when Above Confidence Threshold') + scale_fill_manual(values = custom_palette)
+```
+
+Based on the model's predictions, nearly every stock experienced scenarios where Investment Method 4 outperformed the long-term buy-and-hold strategy. This method leverages the model's forecasts of financial loss to avoid trading on those days, minimizing potential losses. Overall, this approach achieved an overall success rate of approximately 40% and demonstrated effectiveness for almost all the stocks at least once. The focus now shifts to the distribution among confidence levels for the same Investment Method.
+
+```{r, echo=FALSE}
+# This graph shows the chosen investment method as compared to the Buy and Hold method
+
+# Creating a custom color palette for the 9 different confidence levels
+custom_palette = brewer.pal(9, "Paired")
+
+# Creating a bar graph that shows success by Confidence Level
+ggplot(sdf %>% filter(Investment_Method == 4)) + geom_bar(aes(x=Success, fill=factor(Confidence))) + ylab('Count') + ggtitle('Investment Method 4 Success Rate', subtitle = 'Buy when Above Confidence Threshold') + scale_fill_manual(values = custom_palette, name='Confidence Level', labels = c('30%', '35%', '40%', '45%', '50%', '55%', '60%', '65%', '70%'))
+```
+
+This distribution reveals that lower confidence levels (30%-40%) often produce more successes than higher confidence levels, as they bought into the stock more frequently, closely mirroring the buy-and-hold strategy used in the baseline investment calculation. Although using a higher confidence level should theoretically produce a higher investment, the model rarely achieves such a high certainty due to the inherent randomness of the stock market. This results in the model missing out on more frequent smaller multipliers while only occasionally hitting the larger multipliers on significant trading days. The group with the most common success rate is the 50% confidence level as it used many small multipliers while avoiding the small losses when the confidence was below 50%. This will be further explored in the graph below.
+
+```{r, echo=F}
+# This graph shows the chosen investment method as compared to the Buy and Hold method
+plt = ggplot(df %>% filter(Investment_Method == 4, Confidence==0.5)) + geom_col(aes(x = Stock, y=Amount, fill=Investment_Type), position = position_dodge())
+
+# Adjusting labels and coloring
+plt + scale_fill_manual(values = c("Calculated_Investment" = "blue", "Buy_And_Hold_Investment" = "red"), name = "Investment Type", labels = c("Buy and Hold", "Investment Method 4")) + ggtitle('Investment Method 4', subtitle = 'Buy when Confident (50%)') + ylab('Investment Amount')
+```
+
+Overall, the results from Investment Method 4 with a 50% confidence level typically align with the baseline investment strategy. When the model outperforms the traditional investment method, the margin is usually not substantial. Conversely, when the model under performs, the investment amount is typically very close to the baseline. Although these successes are not scaled to drastic proportions, they can still yield significant capital gains over the long term due to compounding interest. This phenomenon can be seen in the LongTermResults.pdf file. 
+
+The analysis proceeds to Investment Method 5, where the machine learning algorithm engages in short-selling the stock when it exceeds the same confidence threshold specified in Investment Method 4. This approach is seemingly opposite of logical as the model short-sells when it predicts that the stock will be profitable on a given trading day.
+
+```{r, echo=FALSE}
+# This graph shows the chosen investment method as compared to the Buy and Hold method
+
+# Creating a custom color palette for the 11 different stocks
+custom_palette = brewer.pal(11, "Paired")
+
+# Creating a bar graph that shows success by Stock
+ggplot(sdf %>% filter(Investment_Method == 5)) + geom_bar(aes(x=Success, fill=Stock)) + ylab('Count') + ggtitle('Investment Method 5 Success Rate', subtitle = 'Short when Above Confidence Threshold') + scale_fill_manual(values = custom_palette)
+```
+
+As illustrated in the above graph and discussed in Investment Method 3, short-selling a stock long-term is generally inadvisable, except in cases where the stock is predicted to experience a financial downturn. This is clearly demonstrated int he graph, where nearly all stocks yielded long-term profitability, with the exception of AMZN. This highlights that, regardless of the model's confidence level, long-term short-selling of stocks is not recommended.
+
+```{r, echo=F}
+# This graph shows the chosen investment method as compared to the Buy and Hold method
+
+# Creating a custom color palette for the 9 different confidence levels
+custom_palette = brewer.pal(9, "Paired")
+
+# Creating a bar graph that shows success by Confidence Level
+ggplot(sdf %>% filter(Investment_Method == 5)) + geom_bar(aes(x=Success, fill=factor(Confidence))) + ylab('Count') + ggtitle('Investment Method 5 Success Rate', subtitle = 'Short when Above Confidence Threshold') + scale_fill_manual(values = custom_palette, name='Confidence Level', labels = c('30%', '35%', '40%', '45%', '50%', '55%', '60%', '65%', '70%'))
+```
+
+The graph above emphasizes the previous observation regarding the decline in investment value when long-term short-selling. Investments that resulted in high capital over long-term typically did so by short-selling stocks that were declining in value. This pattern was consistent across all confidence levels. Consequently, long-term short-selling is generally not advisable.
+
+Next, Investment Method 6 is explored, where the machine learning algorithm constantly adjusts its strategy based on confidence thresholds. When the algorithm predicts a profitable opportunity with confidence exceeding a specified threshold, it buys the stock. On the other hand, when confidence falls below the threshold, it short-sells the stock. This approach aims to maximize returns by leveraging the model's predictive capabilities across varying market conditions.
+
+```{r, echo=F}
+# This graph shows the chosen investment method as compared to the Buy and Hold method
+
+# Creating a custom color palette for the 11 different stocks
+custom_palette = brewer.pal(11, "Paired")
+
+# Creating a bar graph that shows success by Stock
+ggplot(sdf %>% filter(Investment_Method == 6)) + geom_bar(aes(x=Success, fill=Stock)) + ylab('Count') + ggtitle('Investment Method 6 Success Rate', subtitle = 'Buy when Above Confidence Threshold Otherwise Short') + scale_fill_manual(values = custom_palette)
+```
+
+As Investment Method 6 closely resembles Investment Method 4, it outperforms the traditional investment method slightly over 40% of the time. As shown in the graph above, Investment Method 6 surpassed the baseline investment for each stock at least once, depending on the confidence level. This will be examined in greater detail in the following graph.
+
+```{r, echo=F}
+# This graph shows the chosen investment method as compared to the Buy and Hold method
+
+# Creating a custom color palette for the 9 different confidence levels
+custom_palette = brewer.pal(9, "Paired")
+
+# Creating a bar graph that shows success by Confidence Level
+ggplot(sdf %>% filter(Investment_Method == 6)) + geom_bar(aes(x=Success, fill=factor(Confidence))) + ylab('Count') + ggtitle('Investment Method 6 Success Rate', subtitle = 'Buy when Above Confidence Threshold Otherwise Short') + scale_fill_manual(values = custom_palette, name='Confidence Level', labels = c('30%', '35%', '40%', '45%', '50%', '55%', '60%', '65%', '70%'))
+```
+
+Similar to Investment Method 4, lower confidence levels in Investment Method 6 yielded a higher proportion of success compared to higher confidence levels. This is due to the increased frequency of trading days where the stock was purchased, with short-selling occurring only on rare occasions when confidence was extremely low. This approach often resulted in investment amounts similar to or greater than the baseline investment. This method was most successful at a 50% confidence level, as it allowed the model to consistently profit from small positive multipliers while also benefiting from short-selling on days with small losses, effectively doubling its impact. This will be further explored in the following graph.
+
+```{r, echo=F}
+# This graph shows the chosen investment method as compared to the Buy and Hold method
+plt = ggplot(df %>% filter(Investment_Method == 6, Confidence==0.5)) + geom_col(aes(x = Stock, y=Amount, fill=Investment_Type), position = position_dodge())
+
+# Adjusting labels and coloring
+plt + scale_fill_manual(values = c("Calculated_Investment" = "blue", "Buy_And_Hold_Investment" = "red"), name = "Investment Type", labels = c("Buy and Hold", "Investment Method 6")) + ggtitle('Investment Method 6', subtitle = 'Buy when Confident, Otherwise Short') + ylab('Investment Amount')
+```
+
+This investment method demonstrated a higher success rate than Investment Method 4 and yielded greater increases in investment value compared to the baseline investment. Even in the less frequent instances where this method did not outperform, it still generated a profit relative to the initial capital, with the resulting investment value closely aligning with the long-term buy-and-hold strategy. When combined with the effects of compounding interest over long-term investments, this method has the potential to achieve substantially higher gains than the baseline investment method. This phenomenon can be seen in the LongTermResults.pdf file.
+
+Investment Method 7 mirrors Method 6 but reverses its approach based on confidence thresholds. When the machine learning algorithm predicts a profitable opportunity, it initiates a short-selling position in the stock. Conversely, when confidence is below the threshold, it buys the stock.
+
+```{r, echo=F}
+# This graph shows the chosen investment method as compared to the Buy and Hold method
+
+# Creating a custom color palette for the 11 different stocks
+custom_palette = brewer.pal(11, "Paired")
+
+# Creating a bar graph that shows success by Stock
+ggplot(sdf %>% filter(Investment_Method == 7)) + geom_bar(aes(x=Success, fill=Stock)) + ylab('Count') + ggtitle('Investment Method 7 Success Rate', subtitle = 'Short when Above Confidence Threshold Otherwise Buy') + scale_fill_manual(values = custom_palette)
+```
+
+Investment Method 7 primarily employs short-selling as its default trading strategy. Consequently, long-term investments using this method generally experience a decline in value. This trend is evident in the above graph, where the majority of investments outperforming the buy-and-hold strategy involved stocks with decreasing values over the testing period. As previously proven, long-term short-selling is generally not advised.
+
+```{r, echo=F}
+# This graph shows the chosen investment method as compared to the Buy and Hold method
+
+# Creating a custom color palette for the 9 different confidence levels
+custom_palette = brewer.pal(9, "Paired")
+
+# Creating a bar graph that shows success by Confidence Level
+ggplot(sdf %>% filter(Investment_Method == 7)) + geom_bar(aes(x=Success, fill=factor(Confidence))) + ylab('Count') + ggtitle('Investment Method 7 Success Rate', subtitle = 'Short when Above Confidence Threshold Otherwise Buy') + scale_fill_manual(values = custom_palette, name='Confidence Level', labels = c('30%', '35%', '40%', '45%', '50%', '55%', '60%', '65%', '70%'))
+```
+
+The above graph further supports this finding, proving that the majority of successful investments are those that minimize short-selling activity. Specifically, at the 70% confidence level, few investments reach this confidence threshold, resulting in the investment model opting to buy the stock. This approach is similar to the long-term buy-and-hold strategy, yielding more favorable outcomes compared to those that favor short-selling. Overall, long-term short-selling is not advisable.
+
+Investment Method 8 incorporates a conservative approach based on the machine learning algorithm's predicted probabilities. It uses a portion of capital to buy the stock based on the confidence percentage in that day. Simultaneously, it allocates the remaining capital to short-sell the stock. This methods aims to keep losses due to incorrect predictions at a minimum.
+
+```{r, echo=FALSE}
+# This graph shows the chosen investment method as compared to the Buy and Hold method
+plt = ggplot(df %>% filter(Investment_Method == 8)) + geom_col(aes(x = Stock, y=Amount, fill=Investment_Type), position = position_dodge())
+
+# Adjusting labels and coloring
+plt + scale_fill_manual(values = c("Calculated_Investment" = "blue", "Buy_And_Hold_Investment" = "red"), name = "Investment Type", labels = c("Buy and Hold", "Investment Method 8")) + ggtitle('Investment Method 8', subtitle = 'Buy and Short Based on Confidence') + ylab('Investment Amount')
+```
+
+Investing similar proportions of capital in buying and short-selling stock yields an interesting result. Given that the buy and short-sell multipliers are inverse of each other, the expected outcome is roughly equal to the initial capital. This is primarily because most prediction probabilities remain around 50%, reflecting the inherent randomness of the stock market. As illustrated in the graph above, this strategy results in a relatively stable investment that neither appreciates nor depreciates significantly in value.
+
+Finally, Investment Method 9 incorporates a similar approach to Investment Method 8. It uses a portion of capital to short-sell the stock based on the profit confidence percentage that day. Simultaneously, it allocates the remaining capital to buy the stock. This methods aims to keep losses due to incorrect predictions at a minimum.
+
+```{r, echo=FALSE}
+# This graph shows the chosen investment method as compared to the Buy and Hold method
+plt = ggplot(df %>% filter(Investment_Method == 9)) + geom_col(aes(x = Stock, y=Amount, fill=Investment_Type), position = position_dodge())
+
+# Adjusting labels and coloring
+plt + scale_fill_manual(values = c("Calculated_Investment" = "blue", "Buy_And_Hold_Investment" = "red"), name = "Investment Type", labels = c("Buy and Hold", "Investment Method 9")) + ggtitle('Investment Method 9', subtitle = 'Short and Buy Based on Confidence') + ylab('Investment Amount')
+```
+
+Similar to Investment Method 8, allocating similar proportions of capital to buying and short-selling a stock produces an intriguing outcome. As observed in the previous experiment, the expected result closely aligns with the initial capital. This outcome is due to most prediction probabilities remaining around 50%, reflecting the inherent unpredictability of the stock market. Consequently, the capital is approximatley evenly distributed between buying and short-selling, leading to no net gain or loss. This strategy results in a relatively stable investment, maintaining the initial value without significant appreciation or depreciation.
